@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Trading Grind</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #f0ece4;
+    --muted: #666;
+    --muted2: #888;
+    --green: #1D9E75;
+    --green-dim: rgba(29,158,117,0.15);
+    --green-glow: rgba(29,158,117,0.3);
+    --amber: #d4870f;
+    --amber-dim: rgba(212,135,15,0.12);
+    --purple: #7c6fcd;
+    --purple-dim: rgba(124,111,205,0.12);
+    --blue: #4a8fd4;
+    --blue-dim: rgba(74,143,212,0.12);
+    --coral: #d45a30;
+    --coral-dim: rgba(212,90,48,0.12);
+    --gray-dim: rgba(255,255,255,0.04);
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; overflow: hidden; }
+
+  .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; max-width: 480px; margin: 0 auto; position: relative; }
+
+  /* HEADER */
+  .header { padding: 16px 20px 12px; border-bottom: 0.5px solid var(--border); flex-shrink: 0; background: var(--bg); }
+  .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .app-title { font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted2); font-family: 'DM Mono', monospace; }
+  .clock { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--muted2); }
+
+  .day-tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .day-tabs::-webkit-scrollbar { display: none; }
+  .day-tab { flex-shrink: 0; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 0.5px solid var(--border2); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.2s; font-family: 'Syne', sans-serif; letter-spacing: 0.02em; }
+  .day-tab.active { background: var(--green); border-color: var(--green); color: #fff; }
+  .day-tab.has-progress { border-color: var(--green-glow); color: var(--green); }
+
+  /* PROGRESS BAR */
+  .progress-bar-wrap { padding: 10px 20px 0; flex-shrink: 0; }
+  .progress-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .progress-label { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+  .progress-pct { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; color: var(--green); }
+  .progress-track { height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width 0.4s cubic-bezier(0.4,0,0.2,1); }
+
+  /* DAY TITLE */
+  .day-header { padding: 14px 20px 10px; flex-shrink: 0; }
+  .day-name { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); line-height: 1.1; }
+  .day-focus { font-size: 11px; color: var(--muted); margin-top: 3px; font-family: 'DM Mono', monospace; }
+
+  /* BLOCKS LIST */
+  .blocks { flex: 1; overflow-y: auto; padding: 0 16px 24px; scrollbar-width: thin; scrollbar-color: var(--surface2) transparent; }
+  .blocks::-webkit-scrollbar { width: 3px; }
+  .blocks::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 2px; }
+
+  .block-item { display: flex; gap: 12px; margin-bottom: 8px; padding: 14px; border-radius: 14px; border: 0.5px solid var(--border); background: var(--surface); cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; user-select: none; -webkit-user-select: none; }
+  .block-item:active { transform: scale(0.98); }
+  .block-item.done { opacity: 0.45; }
+  .block-item.done::after { content: ''; position: absolute; inset: 0; background: var(--green-dim); border-radius: 14px; pointer-events: none; }
+  .block-item.is-buffer { background: transparent; border-style: dashed; }
+
+  .check-wrap { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border2); display: flex; align-items: center; justify-content: center; margin-top: 1px; transition: all 0.2s; }
+  .block-item.done .check-wrap { background: var(--green); border-color: var(--green); }
+  .check-icon { width: 11px; height: 11px; opacity: 0; transition: opacity 0.2s; }
+  .block-item.done .check-icon { opacity: 1; }
+
+  .block-content { flex: 1; min-width: 0; }
+  .block-time { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 6px; display: inline-block; margin-bottom: 5px; }
+  .block-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 3px; line-height: 1.3; }
+  .block-item.done .block-title { text-decoration: line-through; }
+  .block-desc { font-size: 11px; color: var(--muted2); line-height: 1.5; display: none; }
+  .block-item.expanded .block-desc { display: block; }
+  .expand-hint { font-size: 10px; color: var(--muted); margin-top: 4px; font-family: 'DM Mono', monospace; }
+
+  /* CAT COLORS */
+  .cat-green { background: var(--green-dim); color: var(--green); }
+  .cat-amber { background: var(--amber-dim); color: var(--amber); }
+  .cat-purple { background: var(--purple-dim); color: var(--purple); }
+  .cat-blue { background: var(--blue-dim); color: var(--blue); }
+  .cat-coral { background: var(--coral-dim); color: var(--coral); }
+  .cat-gray { background: var(--gray-dim); color: var(--muted2); }
+
+  /* CURRENT BLOCK HIGHLIGHT */
+  .block-item.current { border-color: var(--green-glow); box-shadow: 0 0 0 1px var(--green-glow); }
+  .now-badge { font-size: 9px; font-weight: 700; background: var(--green); color: #fff; border-radius: 4px; padding: 1px 5px; margin-left: 6px; text-transform: uppercase; letter-spacing: 0.05em; font-family: 'DM Mono', monospace; vertical-align: middle; }
+
+  /* COMPLETION SCREEN */
+  .done-screen { display: none; flex-direction: column; align-items: center; justify-content: center; flex: 1; padding: 40px 24px; text-align: center; }
+  .done-screen.visible { display: flex; }
+  .done-emoji { font-size: 56px; margin-bottom: 20px; }
+  .done-title { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 8px; }
+  .done-sub { font-size: 13px; color: var(--muted2); font-family: 'DM Mono', monospace; line-height: 1.6; }
+
+  /* WEEK DONE SCREEN */
+  .week-screen { display: none; flex-direction: column; align-items: center; justify-content: center; flex: 1; padding: 40px 24px; text-align: center; }
+  .week-screen.visible { display: flex; }
+  .week-stars { font-size: 32px; letter-spacing: 4px; margin-bottom: 20px; }
+  .week-title { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 10px; line-height: 1.1; }
+  .week-sub { font-size: 12px; color: var(--muted2); font-family: 'DM Mono', monospace; line-height: 1.8; max-width: 280px; }
+  .week-days-row { display: flex; gap: 8px; margin: 20px 0; }
+  .week-day-dot { width: 36px; height: 36px; border-radius: 50%; background: var(--green); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; font-family: 'DM Mono', monospace; }
+
+  /* RESET BTN */
+  .reset-btn { margin-top: 24px; padding: 10px 20px; border-radius: 20px; border: 0.5px solid var(--border2); background: transparent; color: var(--muted2); font-size: 12px; font-family: 'Syne', sans-serif; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-top">
+      <span class="app-title">Trading Grind</span>
+      <span class="clock" id="clock">00:00</span>
+    </div>
+    <div class="day-tabs" id="dayTabs"></div>
+  </div>
+
+  <div class="progress-bar-wrap">
+    <div class="progress-info">
+      <span class="progress-label" id="progressLabel">0 / 0 ukończone</span>
+      <span class="progress-pct" id="progressPct">0%</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+
+  <div class="day-header">
+    <div class="day-name" id="dayName"></div>
+    <div class="day-focus" id="dayFocus"></div>
+  </div>
+
+  <div class="blocks" id="blocksList"></div>
+  <div class="done-screen" id="doneScreen">
+    <div class="done-emoji">🔥</div>
+    <div class="done-title">Dzień zaliczony.</div>
+    <div class="done-sub">Wszystkie bloki ukończone.<br>Idź na trening.</div>
+    <button class="reset-btn" onclick="resetDay()">Resetuj dzień</button>
+  </div>
+  <div class="week-screen" id="weekScreen">
+    <div class="week-stars">★ ★ ★ ★ ★</div>
+    <div class="week-title">Tydzień<br>zaliczony.</div>
+    <div class="week-days-row" id="weekDots"></div>
+    <div class="week-sub">5 dni. Pełny grind.<br>Teraz odpoczywasz.<br><br>Nowy tydzień zaczyna się<br>automatycznie w poniedziałek.</div>
+    <button class="reset-btn" onclick="resetWeekNow()">Resetuj teraz</button>
+  </div>
+</div>
+
+<script>
+const DAYS = [
+  {
+    name: "Poniedziałek",
+    focus: "Makro + price action + planowanie tygodnia",
+    blocks: [
+      { time: "09:00–09:30", title: "Poranny rytuał", desc: "Zimna woda, 10 min oddechu (box breathing lub Wim Hof), kawa. Zero telefonu przez pierwsze 20 min.", cat: "green" },
+      { time: "09:30–10:00", title: "Makro briefing", desc: "Kalendarz ekonomiczny: Forex Factory, Investing.com. Zapisz kluczowe eventy tygodnia — NFP, CPI, FOMC.", cat: "purple" },
+      { time: "10:00–10:30", title: "Analiza grafów — Weekly & Daily", desc: "Zaznacz kluczowe poziomy: wsparcia, opory, strefy OB, liquidity pools. Tylko to co naprawdę ważne.", cat: "amber" },
+      { time: "10:30–13:00", title: "Backtest — inne aktywo niż live", desc: "Replay na TradingView lub Soft4FX. Min 20–30 setupów. Testuj na innym instrumencie niż ten który planujesz tradować po południu.", cat: "purple" },
+      { time: "13:00–15:30", title: "Bufor — obiad + spacer, zero grafów", desc: "Pełne 2.5h odcięcia. Wyjdź z pokoju, zjedz spokojnie, spacer. Mózg musi się zresetować po backtestingu.", cat: "gray", buffer: true },
+      { time: "15:30–18:00", title: "Sesja tradingowa live — NY open", desc: "Wchodzisz wypoczęty z już skalibrowanym okiem. Tylko setupy zgodne z planem. Brak setupu = brak trade'a.", cat: "amber" },
+      { time: "18:00–19:30", title: "Nauka — 1 temat głęboko", desc: "Price action: jedna koncepcja — BOS/CHOCH, FVG, order blocks. Notatki odręczne lub Notion.", cat: "purple" },
+      { time: "19:30–20:00", title: "Dziennik tradingowy", desc: "Każdy trade: setup, SL, TP, wynik, emocje. Screenshot. Co zrobiłeś dobrze? Co byś zmienił?", cat: "blue" },
+      { time: "20:00–22:30", title: "Trening siłowy", desc: "Pełna sesja. Kortyzol spada, sen będzie głębszy. Zamknięcie dnia.", cat: "coral" },
+    ]
+  },
+  {
+    name: "Wtorek",
+    focus: "Budowanie i testowanie własnego rulebook",
+    blocks: [
+      { time: "09:00–09:30", title: "Poranny rytuał", desc: "Identyczny jak poniedziałek. Niezmienny rytm poranka = stabilność mentalna.", cat: "green" },
+      { time: "09:30–10:00", title: "Przegląd rynku — overnight", desc: "Czy kluczowe poziomy zostały przebite? Aktualizuj analizę. Tylko korekty, nie przepisuj całości.", cat: "purple" },
+      { time: "10:00–13:00", title: "Backtest intensywny — budowanie rulebook", desc: "Jedna konkretna strategia, cel 20–30 setupów. Definiuj zasady: entry trigger, SL, TP, RR. Zapisz jako rulebook.", cat: "purple" },
+      { time: "13:00–15:30", title: "Bufor — obiad + spacer, zero grafów", desc: "Obowiązkowe 2.5h odcięcia. Nie skracaj — to jest część procesu.", cat: "gray", buffer: true },
+      { time: "15:30–18:00", title: "Sesja tradingowa live", desc: "Realizuj TYLKO setupy z Twojego rulebook. Żadnego improwizowania, żadnego FOMO.", cat: "amber" },
+      { time: "18:00–19:30", title: "Nauka — zarządzanie ryzykiem", desc: "Optymalny sizing (1–2% ryzyka na trade). Kalkulator pozycji. Różne scenariusze drawdownu.", cat: "purple" },
+      { time: "19:30–20:00", title: "Dziennik + wyniki backtestingu", desc: "Win rate, średni RR, expectancy. Wnioski: co zmienić w systemie?", cat: "blue" },
+      { time: "20:00–22:30", title: "Trening siłowy", desc: "Siłownia zamyka dzień i oddziela tryb pracy od odpoczynku.", cat: "coral" },
+    ]
+  },
+  {
+    name: "Środa",
+    focus: "Mentalne twardzielstwo — najważniejszy dzień",
+    blocks: [
+      { time: "09:00–09:30", title: "Rytuał + journaling", desc: "Rytuał + 5 min pisania: co czuję dziś, jaki mam poziom energii, czy jestem gotowy? Uczysz się rozpoznawać swój stan.", cat: "green" },
+      { time: "09:30–11:00", title: "Nauka — psychologia tradingu", desc: "Trading in the Zone, Mark Douglas, Brett Steenbarger. 1 rozdział głęboko. Notatki.", cat: "green" },
+      { time: "11:00–13:00", title: "Backtest — obserwuj emocje podczas setupów", desc: "Podczas replay zapisuj co czujesz przy każdym setupie: pewność, strach, FOMO. To dane o Tobie.", cat: "purple" },
+      { time: "13:00–15:30", title: "Bufor — obiad + spacer bez słuchawek", desc: "Min 45 min na zewnątrz. Bez podcastów, bez muzyki. Mózg przetwarza to czego się nauczył.", cat: "gray", buffer: true },
+      { time: "15:30–18:00", title: "Sesja live — obserwujesz własne emocje", desc: "Po każdym trade zapisz jedno zdanie o stanie mentalnym. Dziś wynik drugorzędny — liczy się samoobserwacja.", cat: "amber" },
+      { time: "18:00–19:30", title: "Analiza błędów z pon. i wt.", desc: "Wzorce błędów: FOMO, za wczesne wyjście, revenge trading. Napisz plan korekty.", cat: "blue" },
+      { time: "19:30–20:00", title: "Dziennik emocji — rozbudowany", desc: "1 pełna strona: emocje przed trade, w trakcie, po. Co Cię blokuje? Co daje pewność?", cat: "blue" },
+      { time: "20:00–22:30", title: "Trening siłowy", desc: "Po intensywnym mentalnie dniu — trening jest absolutnym resetem układu nerwowego.", cat: "coral" },
+    ]
+  },
+  {
+    name: "Czwartek",
+    focus: "Najdłuższa sesja live tygodnia + zaawansowane narzędzia",
+    blocks: [
+      { time: "09:00–09:30", title: "Rytuał + wizualizacja", desc: "Rytuał + 5 min: wyobraź sobie idealną sesję. Jak reagujesz na stratny trade? Mentalne przygotowanie.", cat: "green" },
+      { time: "09:30–10:30", title: "Zaawansowana analiza rynku", desc: "Jedno narzędzie głęboko: COT data, order flow, volume profile lub market profile.", cat: "purple" },
+      { time: "10:30–13:00", title: "Backtest + planowanie scenariuszy", desc: "Zaplanuj: jeśli X — wchodzę, jeśli Y — siedzę z boku. Backtest daje Ci konkretne scenariusze.", cat: "purple" },
+      { time: "13:00–15:30", title: "Bufor — obiad + pełny reset", desc: "Dziś masz najdłuższą sesję tygodnia — wejdź w nią absolutnie świeży.", cat: "gray", buffer: true },
+      { time: "15:30–19:00", title: "Główna sesja live — intensywna egzekucja", desc: "Najdłuższy blok tygodnia. Co 90 min — 10 min przerwy od ekranu. Traduj plan, nie emocje.", cat: "amber" },
+      { time: "19:00–20:00", title: "Deep review — wszystkie trade'y tygodnia", desc: "Każdy trade od poniedziałku. Win rate, average RR, max drawdown, equity curve.", cat: "blue" },
+      { time: "20:00–22:30", title: "Trening siłowy", desc: "Po największej sesji tygodnia — fizyczne rozładowanie kluczowe.", cat: "coral" },
+    ]
+  },
+  {
+    name: "Piątek",
+    focus: "Podsumowanie + plan na kolejny tydzień",
+    blocks: [
+      { time: "09:00–09:30", title: "Rytuał + gratitude", desc: "Rytuał + 3 rzeczy za które jesteś wdzięczny z tego tygodnia. Nawet małe. Kalibruje perspektywę.", cat: "green" },
+      { time: "09:30–11:00", title: "Tygodniowe podsumowanie statystyk", desc: "Arkusz wyników: win%, RR, P&L, max drawdown. Equity curve. Dane nie kłamią — opinie tak.", cat: "blue" },
+      { time: "11:00–13:00", title: "Backtest — uzupełnienie luk z tygodnia", desc: "Co Cię zaskoczyło? Co nie działało? Przetestuj to na historycznych setupach.", cat: "purple" },
+      { time: "13:00–15:30", title: "Bufor — obiad + długi spacer", desc: "Tydzień pracy mózgu zasługuje na porządny reset. Min 45 min na zewnątrz.", cat: "gray", buffer: true },
+      { time: "15:30–17:30", title: "Opcjonalna sesja live", desc: "Piątek = ostrożność. NFP lub inny event — rozważ brak tradingu. Obserwacja to też praca.", cat: "amber" },
+      { time: "17:30–19:30", title: "Plan na przyszły tydzień + refleksja", desc: "Focus każdego dnia, rynki, eventy makro. 1 strona refleksji: czego się nauczyłem, z czego jestem dumny.", cat: "blue" },
+      { time: "19:30–20:00", title: "Nagroda — coś co lubisz", desc: "Zasłużyłeś. Mózg potrzebuje pozytywnego wzmocnienia po tygodniu grindu.", cat: "green" },
+      { time: "20:00–22:30", title: "Trening siłowy", desc: "Zamknięcie tygodnia treningiem. Po nim weekend naprawdę wolny.", cat: "coral" },
+    ]
+  }
+];
+
+const CAT_LABELS = { green: 'Mindset', purple: 'Nauka', amber: 'Trading', blue: 'Review', coral: 'Trening', gray: 'Bufor' };
+
+let currentDay = new Date().getDay();
+if (currentDay === 0 || currentDay === 6) currentDay = 1; else currentDay -= 1;
+let expanded = new Set();
+
+function storageKey(dayIdx) { return `grind_day_${dayIdx}_v1`; }
+function weekResetKey() { return 'grind_week_reset_v1'; }
+function loadDone(dayIdx) { try { return new Set(JSON.parse(localStorage.getItem(storageKey(dayIdx))) || []); } catch { return new Set(); } }
+function saveDone(dayIdx, done) { try { localStorage.setItem(storageKey(dayIdx), JSON.stringify([...done])); } catch {} }
+
+function getMonday(d) {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  date.setDate(diff);
+  date.setHours(0,0,0,0);
+  return date.toISOString().slice(0,10);
+}
+
+function checkAutoReset() {
+  const thisMonday = getMonday(new Date());
+  const lastReset = localStorage.getItem(weekResetKey()) || '';
+  if (lastReset !== thisMonday) {
+    DAYS.forEach((_, i) => { localStorage.removeItem(storageKey(i)); });
+    localStorage.setItem(weekResetKey(), thisMonday);
+    return true;
+  }
+  return false;
+}
+
+checkAutoReset();
+let doneSets = DAYS.map((_, i) => loadDone(i));
+
+function isDayComplete(dayIdx) {
+  const day = DAYS[dayIdx];
+  const done = doneSets[dayIdx];
+  const nonBuffer = day.blocks.map((b, i) => ({ b, i })).filter(({ b }) => !b.buffer);
+  const doneCount = nonBuffer.filter(({ i }) => done.has(i)).length;
+  return doneCount === nonBuffer.length;
+}
+
+function isWeekComplete() {
+  return DAYS.every((_, i) => isDayComplete(i));
+}
+
+function toggleBlock(dayIdx, blockIdx) {
+  const done = doneSets[dayIdx];
+  if (done.has(blockIdx)) done.delete(blockIdx); else done.add(blockIdx);
+  saveDone(dayIdx, done);
+  render();
+}
+
+function toggleExpand(blockIdx) {
+  if (expanded.has(blockIdx)) expanded.delete(blockIdx); else expanded.add(blockIdx);
+  render();
+}
+
+function resetDay() {
+  doneSets[currentDay] = new Set();
+  saveDone(currentDay, doneSets[currentDay]);
+  render();
+}
+
+function resetWeekNow() {
+  DAYS.forEach((_, i) => { doneSets[i] = new Set(); saveDone(i, doneSets[i]); });
+  localStorage.setItem(weekResetKey(), getMonday(new Date()));
+  currentDay = 0;
+  render();
+}
+
+function getCurrentTimeBlock(day) {
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes();
+  const nowMin = h * 60 + m;
+  return day.blocks.findIndex(b => {
+    const [start] = b.time.split('–');
+    const [sh, sm] = start.split(':').map(Number);
+    const [end] = b.time.split('–').slice(1);
+    const [eh, em] = end.split(':').map(Number);
+    return nowMin >= sh * 60 + sm && nowMin < eh * 60 + em;
+  });
+}
+
+function renderTabs() {
+  const tabs = document.getElementById('dayTabs');
+  tabs.innerHTML = DAYS.map((d, i) => {
+    const done = doneSets[i];
+    const total = d.blocks.filter(b => !b.buffer).length;
+    const doneCount = [...done].filter(idx => !d.blocks[idx]?.buffer).length;
+    const hasProgress = doneCount > 0 && doneCount < total;
+    const complete = doneCount === total;
+    return `<button class="day-tab ${i === currentDay ? 'active' : ''} ${hasProgress ? 'has-progress' : ''} ${complete ? 'day-complete' : ''}" onclick="switchDay(${i})">${d.name.slice(0,3).toUpperCase()}${complete ? ' ✓' : ''}</button>`;
+  }).join('');
+}
+
+function render() {
+  const weekDone = isWeekComplete();
+
+  document.getElementById('weekScreen').classList.toggle('visible', weekDone);
+  document.getElementById('doneScreen').classList.remove('visible');
+  document.getElementById('blocksList').style.display = weekDone ? 'none' : '';
+  document.getElementById('dayName').style.display = weekDone ? 'none' : '';
+  document.getElementById('dayFocus').style.display = weekDone ? 'none' : '';
+  document.getElementById('progressBar') && (document.getElementById('progressBar').style.display = weekDone ? 'none' : '');
+
+  if (weekDone) {
+    document.getElementById('weekDots').innerHTML = DAYS.map(d =>
+      `<div class="week-day-dot">${d.name.slice(0,3).toUpperCase()}</div>`
+    ).join('');
+    renderTabs();
+    return;
+  }
+
+  const day = DAYS[currentDay];
+  const done = doneSets[currentDay];
+  const nonBuffer = day.blocks.map((b, i) => ({ b, i })).filter(({ b }) => !b.buffer);
+  const doneCount = nonBuffer.filter(({ i }) => done.has(i)).length;
+  const total = nonBuffer.length;
+  const pct = total ? Math.round(doneCount / total * 100) : 0;
+  const currentBlock = getCurrentTimeBlock(day);
+
+  document.getElementById('dayName').textContent = day.name;
+  document.getElementById('dayFocus').textContent = day.focus;
+  document.getElementById('progressLabel').textContent = `${doneCount} / ${total} ukończone`;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+
+  renderTabs();
+
+  const allDone = doneCount === total;
+  document.getElementById('doneScreen').classList.toggle('visible', allDone);
+  document.getElementById('blocksList').style.display = allDone ? 'none' : '';
+
+  if (!allDone) {
+    document.getElementById('blocksList').innerHTML = day.blocks.map((b, i) => {
+      const isDone = done.has(i);
+      const isExp = expanded.has(i);
+      const isCurrent = i === currentBlock && !isDone;
+      const nowBadge = isCurrent ? `<span class="now-badge">Teraz</span>` : '';
+      return `<div class="block-item ${isDone ? 'done' : ''} ${isExp ? 'expanded' : ''} ${b.buffer ? 'is-buffer' : ''} ${isCurrent ? 'current' : ''}"
+        onclick="handleTap(${i}, event)">
+        <div class="check-wrap">
+          <svg class="check-icon" viewBox="0 0 11 11" fill="none">
+            <polyline points="1.5,5.5 4.5,8.5 9.5,2.5" stroke="${isDone ? '#fff' : 'transparent'}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="block-content">
+          <span class="block-time cat-${b.cat}">${CAT_LABELS[b.cat]}</span>
+          <div class="block-title">${b.time} ${b.title}${nowBadge}</div>
+          <div class="block-desc">${b.desc}</div>
+          ${!isExp ? `<div class="expand-hint">dotknij by rozwinąć</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+let tapTimer = null;
+function handleTap(i, e) {
+  if (tapTimer) {
+    clearTimeout(tapTimer);
+    tapTimer = null;
+    toggleBlock(currentDay, i);
+  } else {
+    tapTimer = setTimeout(() => {
+      tapTimer = null;
+      toggleExpand(i);
+    }, 220);
+  }
+}
+
+function switchDay(i) {
+  currentDay = i;
+  expanded.clear();
+  render();
+}
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+}
+
+updateClock();
+setInterval(updateClock, 30000);
+setInterval(render, 60000);
+render();
+</script>
+</body>
+</html>
